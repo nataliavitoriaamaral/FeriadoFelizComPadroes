@@ -135,6 +135,39 @@ class EstacaoFactory {
     }
 }
 
+// Implementação do padrão Adapter
+// Simulei uma universidade estrangeira que não usa a interface observer
+interface InstituicaoEstrangeira {
+    void receiveWarning(String warningMessage);
+}
+
+class UniversidadeOxford implements InstituicaoEstrangeira {
+    public void receiveWarning(String warningMessage) {
+        System.out.println("Oxford recebeu os dados: " + warningMessage);
+    }
+}
+
+// O Adapter traduz o nosso "update" para o "receiveWarning"
+class AdapterEstrangeiro implements Observer {
+    private InstituicaoEstrangeira instituicao;
+
+    public AdapterEstrangeiro(InstituicaoEstrangeira inst) {
+        this.instituicao = inst;
+    }
+
+    public void update(Subject s) {
+        String msg = "";
+        if (s instanceof Temperatura) {
+            msg = "Temperatura em " + s.getLocal() + " mudou para " + ((Temperatura) s).getTemp() + "°C";
+        } else if (s instanceof Ph) {
+            msg = "pH em " + s.getLocal() + " mudou para " + ((Ph) s).getPh();
+        } else if (s instanceof UmidadeAr) {
+            msg = "Umidade em " + s.getLocal() + " mudou para " + ((UmidadeAr) s).getUmidadeAr() + "%";
+        }
+        instituicao.receiveWarning(msg);
+    }
+}
+
 public class Main {
     public static void main(String[] args) {
         System.out.println("Inicialização do sistema:");
@@ -144,7 +177,12 @@ public class Main {
 
         Universidade sp = new Universidade("São Paulo");
         
+        // Testando o Adapter
+        UniversidadeOxford oxford = new UniversidadeOxford();
+        AdapterEstrangeiro adaptadorOxford = new AdapterEstrangeiro(oxford);
+        
         manaus.getSensorTemp().addObserver(sp);
+        manaus.getSensorTemp().addObserver(adaptadorOxford); // Oxford se inscrevendo via Adapter
 
         System.out.println("\nAtualizando dados de Manaus");
         manaus.atualizarTemperatura(32.5);
