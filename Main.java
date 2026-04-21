@@ -83,20 +83,45 @@ class EstacaoMonitoramento {
     public void atualizarUmidadeAr(double umidade) { this.sensorUmidade.setUmidadeAr(umidade); }
 }
 
+// Padrão Strategy
+// Define diferentes comportamentos de notificação
+interface EstrategiaNotificacao {
+    void processarNotificacao(String mensagem);
+}
+
+class NotificacaoConsole implements EstrategiaNotificacao {
+    public void processarNotificacao(String mensagem) {
+        System.out.println("" + mensagem);
+    }
+}
+
+class NotificacaoUrgente implements EstrategiaNotificacao {
+    public void processarNotificacao(String mensagem) {
+        System.out.println("ALERTA URGENTE!!" + mensagem );
+    }
+}
+
 class Universidade implements Observer  {
     private String nome;
-    public Universidade(String nome) { this.nome = nome; }
+    private EstrategiaNotificacao estrategia; // A universidade agora tem uma Strategy
+
+    public Universidade(String nome, EstrategiaNotificacao estrategia) { 
+        this.nome = nome; 
+        this.estrategia = estrategia;
+    }
 
     public void update(Subject s) { 
+        String msg = "";
         if (s instanceof Temperatura) {
-            Temperatura t = (Temperatura) s;
-            System.out.println("Alteração na universidade " + this.nome + ". A Temperatura em " + t.getLocal() + " mudou para: " + t.getTemp() + "°C");
+            msg = "Alteração na universidade " + this.nome + ". A Temperatura em " + s.getLocal() + " mudou para: " + ((Temperatura) s).getTemp() + "°C";
         } else if (s instanceof Ph) {
-            Ph p = (Ph) s;
-            System.out.println("Alteração na universidade " + this.nome + ". O pH em " + p.getLocal() + " mudou para: " + p.getPh());
+            msg = "Alteração na universidade " + this.nome + ". O pH em " + s.getLocal() + " mudou para: " + ((Ph) s).getPh();
         } else if (s instanceof UmidadeAr) {
-            UmidadeAr u = (UmidadeAr) s;
-            System.out.println("Alteração na universidade " + this.nome + ". A Umidade do ar em " + u.getLocal() + " mudou para: " + u.getUmidadeAr() + "%");
+            msg = "Alteração na universidade " + this.nome + ". A Umidade do ar em " + s.getLocal() + " mudou para: " + ((UmidadeAr) s).getUmidadeAr() + "%";
+        }
+        
+        if (!msg.isEmpty()) {
+            this.estrategia.processarNotificacao(msg); // Executa a estratégia escolhida
         }
     }
 }
@@ -135,18 +160,147 @@ class EstacaoFactory {
     }
 }
 
+// Implementação do padrão Adapter
+// Simulei uma universidade estrangeira que não usa a interface observer
+interface InstituicaoEstrangeira {
+    void receiveWarning(String warningMessage);
+}
+
+class UniversidadeOxford implements InstituicaoEstrangeira {
+    public void receiveWarning(String warningMessage) {
+        System.out.println("Oxford recebeu os dados: " + warningMessage);
+    }
+}
+
+
+// Padrão Decorator 
+// Envelopa um objeto para adicionar novas funcionalidades a ele
+interface Canal {
+    void send(String m);
+}
+
+class TCPChannel implements Canal {
+    public void send(String m) {
+        System.out.println("-- TCP Transmissão -- " + m);
+    }
+}
+
+abstract class ChannelDecorator implements Canal {
+    protected Canal canal;
+    public ChannelDecorator(Canal c) { this.canal = c; }
+    public void send(String m) { canal.send(m); }
+}
+
+class ZipChannel extends ChannelDecorator {
+    public ZipChannel(Canal c) { super(c); }
+    public void send(String m) {
+        System.out.println("ZipChannel --> Compactando dados...");
+        String zipped = "{" + m + "}.ZIP";
+        super.send(zipped); 
+    }
+}
+// O Adapter traduz o nosso "update" para o "receiveWarning"
+class AdapterEstrangeiro implements Observer {
+    private InstituicaoEstrangeira instituicao;
+    private Canal canal; 
+
+    public AdapterEstrangeiro(InstituicaoEstrangeira inst, Canal canal) {
+        this.instituicao = inst;
+        this.canal = canal; 
+    }
+
+    public void update(Subject s) {
+        String msg = "";
+        if (s instanceof Temperatura) msg = "Temperatura em " + s.getLocal() + " mudou para " + ((Temperatura) s).getTemp() + "C";
+        else if (s instanceof Ph) msg = "pH em " + s.getLocal() + " mudou para " + ((Ph) s).getPh();
+        else if (s instanceof UmidadeAr) msg = "Umidade em " + s.getLocal() + " mudou para " + ((UmidadeAr) s).getUmidadeAr() + "%";
+        
+        canal.send(msg); 
+        instituicao.receiveWarning(msg);
+    }
+}
+
+// Implementação do padrão Proxy
+// Implementa padrão de segurança para evitar que qualquer um altere os dados da estação
+class ProxySegurancaEstacao {
+    private EstacaoMonitoramento estacaoReal;
+    private String senhaAcesso;
+
+    public ProxySegurancaEstacao(EstacaoMonitoramento estacao, String senha) {
+        this.estacaoReal = estacao;
+        this.senhaAcesso = senha;
+    }
+
+    // Acesso liberado para inscrição nos sensores
+    public Temperatura getSensorTemp() { return estacaoReal.getSensorTemp(); }
+    public Ph getSensorPh() { return estacaoReal.getSensorPh(); }
+    public UmidadeAr getSensorUmidade() { return estacaoReal.getSensorUmidade(); }
+
+    // Acesso restrito para alteração de dados
+    public void atualizarTemperatura(double temp, String senha) {
+        if (this.senhaAcesso.equals(senha)) {
+            estacaoReal.atualizarTemperatura(temp);
+        } else {
+            System.out.println("Senha incorreta. Atualização de temperatura bloqueada em " + estacaoReal.getLocal());
+        }
+    }
+
+    public void atualizarPh(double ph, String senha) {
+        if (this.senhaAcesso.equals(senha)) {
+            estacaoReal.atualizarPh(ph);
+        } else {
+            System.out.println("Senha incorreta. Atualização de pH bloqueada em " + estacaoReal.getLocal());
+        }
+    }
+    
+    public void atualizarUmidadeAr(double umidade, String senha) {
+        if (this.senhaAcesso.equals(senha)) {
+            estacaoReal.atualizarUmidadeAr(umidade);
+        } else {
+            System.out.println("Senha incorreta. Atualização de umidade bloqueada em " + estacaoReal.getLocal());
+        }
+    }
+}
+
+// Padrão Facade
+// Esconde toda a complexidade de instanciar e ligar as classes
+class FachadaMonitoramento {
+    private ProxySegurancaEstacao estacaoProtegida;
+
+    public void inicializarSistemaCompleto() {
+        System.out.println("--- Inicializando sistema e configurando padrões ---");
+        
+        // Factory + Singleton
+        EstacaoMonitoramento manaus = EstacaoFactory.criarEstacao("Manaus");
+        
+        // Proxy
+        estacaoProtegida = new ProxySegurancaEstacao(manaus, "senha123");
+
+        // Strategy (Duas universidades com reações diferentes)
+        Universidade sp = new Universidade("São Paulo", new NotificacaoConsole());
+        Universidade ufam = new Universidade("Amazonas", new NotificacaoUrgente());
+        
+        // Decorator (ZipChannel) + Adapter
+        UniversidadeOxford oxford = new UniversidadeOxford();
+        Canal redeInternacional = new ZipChannel(new TCPChannel()); 
+        AdapterEstrangeiro adaptadorOxford = new AdapterEstrangeiro(oxford, redeInternacional);
+        
+        // Observer
+        estacaoProtegida.getSensorTemp().addObserver(sp);
+        estacaoProtegida.getSensorTemp().addObserver(ufam);
+        estacaoProtegida.getSensorTemp().addObserver(adaptadorOxford);
+    }
+
+    public void atualizarDadosSeguros(double temp) {
+        System.out.println("\n---Executando rotina de atualização ---");
+        estacaoProtegida.atualizarTemperatura(temp, "senha123");
+    }
+}
+
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Inicialização do sistema:");
-        // Usando a Factory para criar as estações (ela já cadastra na Central)
-        EstacaoMonitoramento manaus = EstacaoFactory.criarEstacao("Manaus");
-        EstacaoMonitoramento fronteiraLeste = EstacaoFactory.criarEstacao("Fronteira Leste");
-
-        Universidade sp = new Universidade("São Paulo");
-        
-        manaus.getSensorTemp().addObserver(sp);
-
-        System.out.println("\nAtualizando dados de Manaus");
-        manaus.atualizarTemperatura(32.5);
+        FachadaMonitoramento sistemaHibrido = new FachadaMonitoramento();
+        sistemaHibrido.inicializarSistemaCompleto();
+        sistemaHibrido.atualizarDadosSeguros(35.2);
     }
 }
