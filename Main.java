@@ -83,20 +83,45 @@ class EstacaoMonitoramento {
     public void atualizarUmidadeAr(double umidade) { this.sensorUmidade.setUmidadeAr(umidade); }
 }
 
+// Padrão Strategy
+// Define diferentes comportamentos de notificação
+interface EstrategiaNotificacao {
+    void processarNotificacao(String mensagem);
+}
+
+class NotificacaoConsole implements EstrategiaNotificacao {
+    public void processarNotificacao(String mensagem) {
+        System.out.println("" + mensagem);
+    }
+}
+
+class NotificacaoUrgente implements EstrategiaNotificacao {
+    public void processarNotificacao(String mensagem) {
+        System.out.println("ALERTA URGENTE!!" + mensagem );
+    }
+}
+
 class Universidade implements Observer  {
     private String nome;
-    public Universidade(String nome) { this.nome = nome; }
+    private EstrategiaNotificacao estrategia; // A universidade agora tem uma Strategy
+
+    public Universidade(String nome, EstrategiaNotificacao estrategia) { 
+        this.nome = nome; 
+        this.estrategia = estrategia;
+    }
 
     public void update(Subject s) { 
+        String msg = "";
         if (s instanceof Temperatura) {
-            Temperatura t = (Temperatura) s;
-            System.out.println("Alteração na universidade " + this.nome + ". A Temperatura em " + t.getLocal() + " mudou para: " + t.getTemp() + "°C");
+            msg = "Alteração na universidade " + this.nome + ". A Temperatura em " + s.getLocal() + " mudou para: " + ((Temperatura) s).getTemp() + "°C";
         } else if (s instanceof Ph) {
-            Ph p = (Ph) s;
-            System.out.println("Alteração na universidade " + this.nome + ". O pH em " + p.getLocal() + " mudou para: " + p.getPh());
+            msg = "Alteração na universidade " + this.nome + ". O pH em " + s.getLocal() + " mudou para: " + ((Ph) s).getPh();
         } else if (s instanceof UmidadeAr) {
-            UmidadeAr u = (UmidadeAr) s;
-            System.out.println("Alteração na universidade " + this.nome + ". A Umidade do ar em " + u.getLocal() + " mudou para: " + u.getUmidadeAr() + "%");
+            msg = "Alteração na universidade " + this.nome + ". A Umidade do ar em " + s.getLocal() + " mudou para: " + ((UmidadeAr) s).getUmidadeAr() + "%";
+        }
+        
+        if (!msg.isEmpty()) {
+            this.estrategia.processarNotificacao(msg); // Executa a estratégia escolhida
         }
     }
 }
@@ -220,7 +245,7 @@ public class Main {
         // Criando o Proxy para proteger a estação de Manaus com senha
         ProxySegurancaEstacao manausProtegida = new ProxySegurancaEstacao(manaus, "Senha22!");
 
-        Universidade sp = new Universidade("São Paulo");
+        Universidade sp = new Universidade("São Paulo", new NotificacaoUrgente());
         UniversidadeOxford oxford = new UniversidadeOxford();
         AdapterEstrangeiro adaptadorOxford = new AdapterEstrangeiro(oxford);
         
