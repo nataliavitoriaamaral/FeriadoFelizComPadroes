@@ -172,23 +172,50 @@ class UniversidadeOxford implements InstituicaoEstrangeira {
     }
 }
 
+
+// Padrão Decorator 
+// Envelopa um objeto para adicionar novas funcionalidades a ele
+interface Canal {
+    void send(String m);
+}
+
+class TCPChannel implements Canal {
+    public void send(String m) {
+        System.out.println("-- TCP Transmissão -- " + m);
+    }
+}
+
+abstract class ChannelDecorator implements Canal {
+    protected Canal canal;
+    public ChannelDecorator(Canal c) { this.canal = c; }
+    public void send(String m) { canal.send(m); }
+}
+
+class ZipChannel extends ChannelDecorator {
+    public ZipChannel(Canal c) { super(c); }
+    public void send(String m) {
+        System.out.println("ZipChannel --> Compactando dados...");
+        String zipped = "{" + m + "}ZIP";
+        super.send(zipped); 
+    }
+}
 // O Adapter traduz o nosso "update" para o "receiveWarning"
 class AdapterEstrangeiro implements Observer {
     private InstituicaoEstrangeira instituicao;
+    private Canal canal; 
 
-    public AdapterEstrangeiro(InstituicaoEstrangeira inst) {
+    public AdapterEstrangeiro(InstituicaoEstrangeira inst, Canal canal) {
         this.instituicao = inst;
+        this.canal = canal; 
     }
 
     public void update(Subject s) {
         String msg = "";
-        if (s instanceof Temperatura) {
-            msg = "Temperatura em " + s.getLocal() + " mudou para " + ((Temperatura) s).getTemp() + "°C";
-        } else if (s instanceof Ph) {
-            msg = "pH em " + s.getLocal() + " mudou para " + ((Ph) s).getPh();
-        } else if (s instanceof UmidadeAr) {
-            msg = "Umidade em " + s.getLocal() + " mudou para " + ((UmidadeAr) s).getUmidadeAr() + "%";
-        }
+        if (s instanceof Temperatura) msg = "Temperatura em " + s.getLocal() + " mudou para " + ((Temperatura) s).getTemp() + "C";
+        else if (s instanceof Ph) msg = "pH em " + s.getLocal() + " mudou para " + ((Ph) s).getPh();
+        else if (s instanceof UmidadeAr) msg = "Umidade em " + s.getLocal() + " mudou para " + ((UmidadeAr) s).getUmidadeAr() + "%";
+        
+        canal.send(msg); 
         instituicao.receiveWarning(msg);
     }
 }
@@ -247,7 +274,8 @@ public class Main {
 
         Universidade sp = new Universidade("São Paulo", new NotificacaoUrgente());
         UniversidadeOxford oxford = new UniversidadeOxford();
-        AdapterEstrangeiro adaptadorOxford = new AdapterEstrangeiro(oxford);
+        Canal redeInternacional = new ZipChannel(new TCPChannel()); // Criando o Decorator
+        AdapterEstrangeiro adaptadorOxford = new AdapterEstrangeiro(oxford, redeInternacional); // Passando o canal pro Adapter
         
         // Inscrevendo através do Proxy
         manausProtegida.getSensorTemp().addObserver(sp);
