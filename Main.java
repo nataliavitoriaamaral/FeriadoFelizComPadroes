@@ -195,7 +195,7 @@ class ZipChannel extends ChannelDecorator {
     public ZipChannel(Canal c) { super(c); }
     public void send(String m) {
         System.out.println("ZipChannel --> Compactando dados...");
-        String zipped = "{" + m + "}ZIP";
+        String zipped = "{" + m + "}.ZIP";
         super.send(zipped); 
     }
 }
@@ -262,29 +262,45 @@ class ProxySegurancaEstacao {
     }
 }
 
+// Padrão Facade
+// Esconde toda a complexidade de instanciar e ligar as classes
+class FachadaMonitoramento {
+    private ProxySegurancaEstacao estacaoProtegida;
+
+    public void inicializarSistemaCompleto() {
+        System.out.println("--- Inicializando sistema e configurando padrões ---");
+        
+        // Factory + Singleton
+        EstacaoMonitoramento manaus = EstacaoFactory.criarEstacao("Manaus");
+        
+        // Proxy
+        estacaoProtegida = new ProxySegurancaEstacao(manaus, "senha123");
+
+        // Strategy (Duas universidades com reações diferentes)
+        Universidade sp = new Universidade("São Paulo", new NotificacaoConsole());
+        Universidade ufam = new Universidade("Amazonas", new NotificacaoUrgente());
+        
+        // Decorator (ZipChannel) + Adapter
+        UniversidadeOxford oxford = new UniversidadeOxford();
+        Canal redeInternacional = new ZipChannel(new TCPChannel()); 
+        AdapterEstrangeiro adaptadorOxford = new AdapterEstrangeiro(oxford, redeInternacional);
+        
+        // Observer
+        estacaoProtegida.getSensorTemp().addObserver(sp);
+        estacaoProtegida.getSensorTemp().addObserver(ufam);
+        estacaoProtegida.getSensorTemp().addObserver(adaptadorOxford);
+    }
+
+    public void atualizarDadosSeguros(double temp) {
+        System.out.println("\n---Executando rotina de atualização ---");
+        estacaoProtegida.atualizarTemperatura(temp, "senha123");
+    }
+}
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Inicialização do sistema:");
-        EstacaoMonitoramento manaus = EstacaoFactory.criarEstacao("Manaus");
-        EstacaoMonitoramento fronteiraLeste = EstacaoFactory.criarEstacao("Fronteira Leste");
-
-        // Criando o Proxy para proteger a estação de Manaus com senha
-        ProxySegurancaEstacao manausProtegida = new ProxySegurancaEstacao(manaus, "Senha22!");
-
-        Universidade sp = new Universidade("São Paulo", new NotificacaoUrgente());
-        UniversidadeOxford oxford = new UniversidadeOxford();
-        Canal redeInternacional = new ZipChannel(new TCPChannel()); // Criando o Decorator
-        AdapterEstrangeiro adaptadorOxford = new AdapterEstrangeiro(oxford, redeInternacional); // Passando o canal pro Adapter
-        
-        // Inscrevendo através do Proxy
-        manausProtegida.getSensorTemp().addObserver(sp);
-        manausProtegida.getSensorTemp().addObserver(adaptadorOxford);
-
-        System.out.println("\nTeste deve falhar para atualizar os dados (pois a senha passada está errada):");
-        manausProtegida.atualizarTemperatura(40.0, "senha123");
-
-        System.out.println("\nTeste deve permitir a atualização dos dados (pois a senha é a correta):");
-        manausProtegida.atualizarTemperatura(32.5, "Senha22!");
+        FachadaMonitoramento sistemaHibrido = new FachadaMonitoramento();
+        sistemaHibrido.inicializarSistemaCompleto();
+        sistemaHibrido.atualizarDadosSeguros(35.2);
     }
 }
