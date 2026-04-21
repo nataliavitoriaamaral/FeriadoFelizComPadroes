@@ -168,23 +168,70 @@ class AdapterEstrangeiro implements Observer {
     }
 }
 
+// Implementação do padrão Proxy
+// Implementa padrão de segurança para evitar que qualquer um altere os dados da estação
+class ProxySegurancaEstacao {
+    private EstacaoMonitoramento estacaoReal;
+    private String senhaAcesso;
+
+    public ProxySegurancaEstacao(EstacaoMonitoramento estacao, String senha) {
+        this.estacaoReal = estacao;
+        this.senhaAcesso = senha;
+    }
+
+    // Acesso liberado para inscrição nos sensores
+    public Temperatura getSensorTemp() { return estacaoReal.getSensorTemp(); }
+    public Ph getSensorPh() { return estacaoReal.getSensorPh(); }
+    public UmidadeAr getSensorUmidade() { return estacaoReal.getSensorUmidade(); }
+
+    // Acesso restrito para alteração de dados
+    public void atualizarTemperatura(double temp, String senha) {
+        if (this.senhaAcesso.equals(senha)) {
+            estacaoReal.atualizarTemperatura(temp);
+        } else {
+            System.out.println("Senha incorreta. Atualização de temperatura bloqueada em " + estacaoReal.getLocal());
+        }
+    }
+
+    public void atualizarPh(double ph, String senha) {
+        if (this.senhaAcesso.equals(senha)) {
+            estacaoReal.atualizarPh(ph);
+        } else {
+            System.out.println("Senha incorreta. Atualização de pH bloqueada em " + estacaoReal.getLocal());
+        }
+    }
+    
+    public void atualizarUmidadeAr(double umidade, String senha) {
+        if (this.senhaAcesso.equals(senha)) {
+            estacaoReal.atualizarUmidadeAr(umidade);
+        } else {
+            System.out.println("Senha incorreta. Atualização de umidade bloqueada em " + estacaoReal.getLocal());
+        }
+    }
+}
+
+
 public class Main {
     public static void main(String[] args) {
         System.out.println("Inicialização do sistema:");
-        // Usando a Factory para criar as estações (ela já cadastra na Central)
         EstacaoMonitoramento manaus = EstacaoFactory.criarEstacao("Manaus");
         EstacaoMonitoramento fronteiraLeste = EstacaoFactory.criarEstacao("Fronteira Leste");
 
+        // Criando o Proxy para proteger a estação de Manaus com senha
+        ProxySegurancaEstacao manausProtegida = new ProxySegurancaEstacao(manaus, "Senha22!");
+
         Universidade sp = new Universidade("São Paulo");
-        
-        // Testando o Adapter
         UniversidadeOxford oxford = new UniversidadeOxford();
         AdapterEstrangeiro adaptadorOxford = new AdapterEstrangeiro(oxford);
         
-        manaus.getSensorTemp().addObserver(sp);
-        manaus.getSensorTemp().addObserver(adaptadorOxford); // Oxford se inscrevendo via Adapter
+        // Inscrevendo através do Proxy
+        manausProtegida.getSensorTemp().addObserver(sp);
+        manausProtegida.getSensorTemp().addObserver(adaptadorOxford);
 
-        System.out.println("\nAtualizando dados de Manaus");
-        manaus.atualizarTemperatura(32.5);
+        System.out.println("\nTeste deve falhar para atualizar os dados (pois a senha passada está errada):");
+        manausProtegida.atualizarTemperatura(40.0, "senha123");
+
+        System.out.println("\nTeste deve permitir a atualização dos dados (pois a senha é a correta):");
+        manausProtegida.atualizarTemperatura(32.5, "Senha22!");
     }
 }
